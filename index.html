@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極致全方位記帳本（三圓餅圖升級版）</title>
+    <title>極致全方位記帳本（三區塊獨立圓餅圖版）</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Chart.js -->
@@ -216,46 +216,65 @@
             </section>
         </div>
 
-        <!-- 區塊 3：圖表分析（已升級三圓餅圖） -->
+        <!-- 區塊 3：圖表分析（分成三個獨立橫向滾動或卡片區塊） -->
         <div id="tabContent-charts" class="space-y-4 hidden">
-            <!-- 支出圓餅圖 -->
-            <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-300">本月支出類別占比</h3>
-                    <button onclick="exportChartImage('expensePieChart', 'expense_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
-                </div>
-                <div class="relative h-56 flex items-center justify-center">
-                    <canvas id="expensePieChart"></canvas>
-                </div>
-            </section>
+            <!-- 頂部小標題說明 -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 text-center text-xs text-slate-400">
+                💡 左右滑動下方卡片可切換查看不同的圓餅圖分析
+            </div>
 
-            <!-- 收入圓餅圖 -->
-            <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-300">本月收入來源占比</h3>
-                    <button onclick="exportChartImage('incomePieChart', 'income_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+            <!-- 三個圓餅圖獨立橫向滑動區塊 (Mobile-friendly Snap Scroll) -->
+            <div class="flex overflow-x-auto space-x-3 pb-2 snap-x snap-mandatory hide-scrollbar">
+                
+                <!-- 圓餅區塊 1：本月支出類別 -->
+                <div class="min-w-[100%] sm:min-w-[100%] bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-lg snap-center flex-shrink-0">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <h3 class="text-sm font-bold text-slate-200">本月支出類別占比</h3>
+                        </div>
+                        <button onclick="exportChartImage('expensePieChart', 'expense_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載</button>
+                    </div>
+                    <div class="relative h-60 flex items-center justify-center">
+                        <canvas id="expensePieChart"></canvas>
+                    </div>
                 </div>
-                <div class="relative h-56 flex items-center justify-center">
-                    <canvas id="incomePieChart"></canvas>
-                </div>
-            </section>
 
-            <!-- 總收入 vs 總支出比例圓餅圖 -->
-            <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-slate-300">總收入 vs 總支出比例</h3>
-                    <button onclick="exportChartImage('comparisonPieChart', 'comparison_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+                <!-- 圓餅區塊 2：本月收入來源 -->
+                <div class="min-w-[100%] sm:min-w-[100%] bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-lg snap-center flex-shrink-0">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <h3 class="text-sm font-bold text-slate-200">本月收入來源占比</h3>
+                        </div>
+                        <button onclick="exportChartImage('incomePieChart', 'income_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載</button>
+                    </div>
+                    <div class="relative h-60 flex items-center justify-center">
+                        <canvas id="incomePieChart"></canvas>
+                    </div>
                 </div>
-                <div class="relative h-56 flex items-center justify-center">
-                    <canvas id="comparisonPieChart"></canvas>
-                </div>
-            </section>
 
-            <!-- 近 7 天支出趨勢 -->
+                <!-- 圓餅區塊 3：總收入 vs 總支出比例 -->
+                <div class="min-w-[100%] sm:min-w-[100%] bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-lg snap-center flex-shrink-0">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                            <h3 class="text-sm font-bold text-slate-200">總收入 vs 總支出比例</h3>
+                        </div>
+                        <button onclick="exportChartImage('comparisonPieChart', 'comparison_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載</button>
+                    </div>
+                    <div class="relative h-60 flex items-center justify-center">
+                        <canvas id="comparisonPieChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 近 7 天支出趨勢長條圖區塊 -->
             <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-sm font-bold text-slate-300">近 7 天支出趨勢</h3>
-                    <button onclick="exportChartImage('barChart', 'expense_bar.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+                    <button onclick="exportChartImage('barChart', 'expense_bar.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
                 </div>
                 <div class="relative h-56 flex items-center justify-center">
                     <canvas id="barChart"></canvas>
