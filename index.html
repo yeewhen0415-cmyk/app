@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極致全方位記帳本（防遺失升級版）</title>
+    <title>極致全方位記帳本（三圓餅圖升級版）</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Chart.js -->
@@ -78,8 +78,8 @@
 
             <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/60 text-xs">
                 <div>
-                    <span class="text-slate-400 block mb-0.5">目前總餘額</span>
-                    <span class="text-sm font-bold text-sky-400 privacy-val" id="dashTotalBalance">$0</span>
+                    <span class="text-slate-400 block mb-0.5">目前淨資產</span>
+                    <span class="text-sm font-bold text-emerald-400 privacy-val" id="dashTotalBalance">$0</span>
                 </div>
                 <div>
                     <span class="text-slate-400 block mb-0.5">今日已花費</span>
@@ -216,18 +216,42 @@
             </section>
         </div>
 
-        <!-- 區塊 3：圖表分析 -->
+        <!-- 區塊 3：圖表分析（已升級三圓餅圖） -->
         <div id="tabContent-charts" class="space-y-4 hidden">
+            <!-- 支出圓餅圖 -->
             <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-sm font-bold text-slate-300">本月支出類別占比</h3>
-                    <button onclick="exportChartImage('pieChart', 'expense_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+                    <button onclick="exportChartImage('expensePieChart', 'expense_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
                 </div>
-                <div class="relative h-64 flex items-center justify-center">
-                    <canvas id="pieChart"></canvas>
+                <div class="relative h-56 flex items-center justify-center">
+                    <canvas id="expensePieChart"></canvas>
                 </div>
             </section>
 
+            <!-- 收入圓餅圖 -->
+            <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-300">本月收入來源占比</h3>
+                    <button onclick="exportChartImage('incomePieChart', 'income_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+                </div>
+                <div class="relative h-56 flex items-center justify-center">
+                    <canvas id="incomePieChart"></canvas>
+                </div>
+            </section>
+
+            <!-- 總收入 vs 總支出比例圓餅圖 -->
+            <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-300">總收入 vs 總支出比例</h3>
+                    <button onclick="exportChartImage('comparisonPieChart', 'comparison_pie.png')" class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg hover:bg-emerald-500/20"><i class="fa-solid fa-download"></i> 下載圖表</button>
+                </div>
+                <div class="relative h-56 flex items-center justify-center">
+                    <canvas id="comparisonPieChart"></canvas>
+                </div>
+            </section>
+
+            <!-- 近 7 天支出趨勢 -->
             <section class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-lg">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-sm font-bold text-slate-300">近 7 天支出趨勢</h3>
@@ -305,7 +329,6 @@
 
     <!-- JavaScript 核心邏輯 -->
     <script>
-        // 資料結構初始化（雙重防護：同時儲存於 localStorage 與 sessionStorage）
         let records = JSON.parse(localStorage.getItem('my_records')) || JSON.parse(sessionStorage.getItem('backup_records')) || [];
         let config = JSON.parse(localStorage.getItem('my_config')) || { daily_limit: 150 };
         let currentType = 'expense';
@@ -320,7 +343,6 @@
             transfer: ['🏦 銀行轉帳', '💵 提領現金', '💳 信用卡繳款']
         };
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('inputDate').value = getTodayStr();
             updateCategoryOptions();
@@ -328,7 +350,6 @@
             renderUI();
         });
 
-        // 檢查是否有歷史殘存資料可供救援
         function checkRescueData() {
             const local = localStorage.getItem('my_records');
             const session = sessionStorage.getItem('backup_records');
@@ -355,7 +376,6 @@
             return `${year}-${month}-${day}`;
         }
 
-        // 切換收支類型
         function setType(type) {
             currentType = type;
             document.getElementById('typeExpense').className = type === 'expense' ? 'py-2 rounded-lg transition bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold' : 'py-2 rounded-lg transition text-slate-400';
@@ -377,14 +397,12 @@
             });
         }
 
-        // 常用金額快捷按鈕
         function addQuickAmount(val) {
             const priceInput = document.getElementById('inputPrice');
             let currentVal = parseFloat(priceInput.value) || 0;
             priceInput.value = currentVal + val;
         }
 
-        // 新增記帳
         function addRecord(e) {
             e.preventDefault();
             const date = document.getElementById('inputDate').value;
@@ -393,7 +411,6 @@
             const note = document.getElementById('inputNote').value || (currentType === 'expense' ? '一般支出' : '收入');
             const mood = currentType === 'expense' ? document.querySelector('input[name="mood"]:checked').value : '無';
 
-            // 支援內嵌算式計算
             let price = 0;
             try {
                 price = eval(rawPrice);
@@ -420,12 +437,10 @@
             records.unshift(newRecord);
             saveAndRender();
 
-            // 清空欄位
             document.getElementById('inputPrice').value = '';
             document.getElementById('inputNote').value = '';
         }
 
-        // 隨時更改既有記錄的日期
         function updateRecordDate(id, newDate) {
             if (!newDate) return;
             const record = records.find(r => r.id === id);
@@ -442,12 +457,11 @@
 
         function saveAndRender() {
             localStorage.setItem('my_records', JSON.stringify(records));
-            sessionStorage.setItem('backup_records', JSON.stringify(records)); // 雙重安全備份
+            sessionStorage.setItem('backup_records', JSON.stringify(records));
             localStorage.setItem('my_config', JSON.stringify(config));
             renderUI();
         }
 
-        // 渲染整體介面
         function renderUI() {
             renderDashboard();
             renderRecords();
@@ -457,13 +471,11 @@
             updateStreak();
         }
 
-        // 儀表板計算（含總餘額計算）
         function renderDashboard() {
             const todayStr = getTodayStr();
             const todayRecords = records.filter(r => r.date === todayStr);
             const todaySpent = todayRecords.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.price, 0);
             
-            // 計算總餘額：所有收入總和 - 所有支出總和
             const totalIncome = records.filter(r => r.type === 'income').reduce((sum, r) => sum + r.price, 0);
             const totalExpense = records.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.price, 0);
             const totalBalance = totalIncome - totalExpense;
@@ -474,13 +486,13 @@
 
             document.getElementById('dashRemaining').textContent = `$${remaining}`;
             document.getElementById('dashTotalBalance').textContent = `$${totalBalance}`;
+            document.getElementById('dashTotalBalance').className = `text-sm font-bold privacy-val ${totalBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
             document.getElementById('dashTodaySpent').textContent = `$${todaySpent}`;
             document.getElementById('dashDailyLimit').textContent = `$${dailyLimit}`;
             document.getElementById('dashProgressBar').style.width = `${usagePct}%`;
             applyPrivacyMask();
         }
 
-        // 記帳紀錄清單與搜尋
         function renderRecords() {
             const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
             const listEl = document.getElementById('recordList');
@@ -515,7 +527,6 @@
                             <button onclick="deleteRecord(${r.id})" class="text-slate-600 hover:text-rose-400 transition" title="刪除紀錄"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
-                    <!-- 移動日期控制列 -->
                     <div class="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[11px] text-slate-400">
                         <span>流動日期：</span>
                         <input type="date" value="${r.date}" onchange="updateRecordDate(${r.id}, this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
@@ -526,7 +537,6 @@
             applyPrivacyMask();
         }
 
-        // 連續記帳天數統計
         function updateStreak() {
             let uniqueDates = [...new Set(records.map(r => r.date))].sort().reverse();
             let streak = 0;
@@ -546,7 +556,6 @@
             document.getElementById('streakBadge').textContent = `🔥 連續記帳 ${streak} 天`;
         }
 
-        // 一鍵今天沒花錢打卡
         function checkNoSpendDay() {
             const todayStr = getTodayStr();
             const existing = records.find(r => r.date === todayStr && r.note === '✨ 今日無開銷打卡');
@@ -567,7 +576,6 @@
             alert('太棒了！成功記錄無開銷日！');
         }
 
-        // 防窺隱私遮罩
         function togglePrivacy() {
             isPrivacyMode = !isPrivacyMode;
             const btn = document.getElementById('privacyBtn');
@@ -586,7 +594,6 @@
             });
         }
 
-        // 分頁切換
         function switchTab(tab) {
             ['record', 'calendar', 'charts', 'vip'].forEach(t => {
                 document.getElementById(`tabContent-${t}`).classList.add('hidden');
@@ -596,7 +603,6 @@
             document.getElementById(`tabBtn-${tab}`).className = 'flex-1 py-2.5 rounded-xl transition bg-emerald-500 text-slate-950 shadow-md font-bold';
         }
 
-        // 月曆生成
         function changeMonth(dir) {
             currentCalMonth += dir;
             if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
@@ -659,31 +665,74 @@
             applyPrivacyMask();
         }
 
-        // Chart.js 圖表渲染
-        let pieChartInstance = null;
+        // 圖表執行個體全域變數
+        let expensePieInstance = null;
+        let incomePieInstance = null;
+        let comparisonPieInstance = null;
         let barChartInstance = null;
 
         function renderCharts() {
+            // 1. 支出圓餅圖
             const expenseRecords = records.filter(r => r.type === 'expense');
-            const catMap = {};
+            const expCatMap = {};
             expenseRecords.forEach(r => {
-                catMap[r.category] = (catMap[r.category] || 0) + r.price;
+                expCatMap[r.category] = (expCatMap[r.category] || 0) + r.price;
             });
 
-            const pieCtx = document.getElementById('pieChart').getContext('2d');
-            if (pieChartInstance) pieChartInstance.destroy();
-            pieChartInstance = new Chart(pieCtx, {
+            const expCtx = document.getElementById('expensePieChart').getContext('2d');
+            if (expensePieInstance) expensePieInstance.destroy();
+            expensePieInstance = new Chart(expCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(catMap),
+                    labels: Object.keys(expCatMap).length > 0 ? Object.keys(expCatMap) : ['無支出紀錄'],
                     datasets: [{
-                        data: Object.values(catMap),
-                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+                        data: Object.values(expCatMap).length > 0 ? Object.values(expCatMap) : [1],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#10b981']
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } } } }
             });
 
+            // 2. 收入圓餅圖
+            const incomeRecords = records.filter(r => r.type === 'income');
+            const incCatMap = {};
+            incomeRecords.forEach(r => {
+                incCatMap[r.category] = (incCatMap[r.category] || 0) + r.price;
+            });
+
+            const incCtx = document.getElementById('incomePieChart').getContext('2d');
+            if (incomePieInstance) incomePieInstance.destroy();
+            incomePieInstance = new Chart(incCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(incCatMap).length > 0 ? Object.keys(incCatMap) : ['無收入紀錄'],
+                    datasets: [{
+                        data: Object.values(incCatMap).length > 0 ? Object.values(incCatMap) : [1],
+                        backgroundColor: Object.values(incCatMap).length > 0 ? ['#10b981', '#3b82f6', '#14b8a6', '#06b6d4'] : ['#334155']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } } } }
+            });
+
+            // 3. 總收入 vs 總支出比例圓餅圖
+            const totalIncome = incomeRecords.reduce((sum, r) => sum + r.price, 0);
+            const totalExpense = expenseRecords.reduce((sum, r) => sum + r.price, 0);
+
+            const compCtx = document.getElementById('comparisonPieChart').getContext('2d');
+            if (comparisonPieInstance) comparisonPieInstance.destroy();
+            comparisonPieInstance = new Chart(compCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['總收入', '總支出'],
+                    datasets: [{
+                        data: [totalIncome > 0 ? totalIncome : 0, totalExpense > 0 ? totalExpense : 0],
+                        backgroundColor: ['#10b981', '#ef4444']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 10 } } } } }
+            });
+
+            // 4. 近 7 天支出趨勢長條圖
             const days = [];
             const amounts = [];
             for (let i = 6; i >= 0; i--) {
@@ -712,7 +761,6 @@
             });
         }
 
-        // 下載圖表圖片
         function exportChartImage(canvasId, filename) {
             const canvas = document.getElementById(canvasId);
             const link = document.createElement('a');
@@ -721,7 +769,6 @@
             link.click();
         }
 
-        // VIP 看板
         function renderVIP() {
             const expenseRecords = records.filter(r => r.type === 'expense');
             const totalExp = expenseRecords.reduce((sum, r) => sum + r.price, 0);
@@ -741,7 +788,6 @@
             document.getElementById('vipRegretCount').textContent = `${regretCount} 次`;
         }
 
-        // 設定與備份彈窗
         function openSettingsModal() {
             document.getElementById('settingDailyLimit').value = config.daily_limit;
             document.getElementById('settingsModal').classList.remove('hidden');
@@ -760,7 +806,6 @@
             }
         }
 
-        // JSON 匯出與匯入
         function exportDataJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ records, config }));
             const dlAnchor = document.createElement('a');
