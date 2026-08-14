@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Apex Mobile Finance</title>
+    <title>Apex Finance Pro Max</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js 報表繪製 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -15,14 +17,15 @@
                         bgDark: '#0D0E15',
                         cardDark: '#1E293B',
                         accentGreen: '#00E676',
-                        accentRed: '#FF5252'
+                        accentRed: '#FF5252',
+                        accentBlue: '#3B82F6',
+                        accentPurple: '#A855F7'
                     }
                 }
             }
         }
     </script>
     <style>
-        /* 針對 iOS 避免長按選取與雙擊放大的原生體驗優化 */
         body {
             -webkit-touch-callout: none;
             -webkit-user-select: none;
@@ -36,113 +39,220 @@
             -webkit-user-select: text;
             user-select: text;
         }
+        /* 隱藏滾動條 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-bgDark min-h-screen flex flex-col justify-between antialiased">
 
     <!-- 頂部 Header -->
-    <header class="pt-6 px-4 pb-2 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-bgDark/90 backdrop-blur-md z-10">
+    <header class="pt-6 px-4 pb-2 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-bgDark/90 backdrop-blur-md z-30">
         <div>
             <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-1.5">
-                <span class="text-accentGreen">⚡</span> APEX FINANCE
+                <span class="text-accentGreen">⚡</span> APEX PRO
             </h1>
             <p id="currentDateText" class="text-xs text-slate-400 font-medium">YYYY-MM-DD</p>
         </div>
-        <div id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-accentGreen border border-emerald-500/20">
-            🟢 預算健康
+        <div class="flex items-center gap-2">
+            <button onclick="switchTab('invoice')" class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-accentPurple border border-purple-500/20 flex items-center gap-1">
+                🧾 雲端發票
+            </button>
+            <div id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-accentGreen border border-emerald-500/20">
+                🟢 預算健康
+            </div>
         </div>
     </header>
 
-    <!-- 主內容區 (單頁切換 Tab) -->
-    <main class="flex-1 px-4 py-4 max-w-md mx-auto w-full overflow-y-auto">
+    <!-- 主內容區 -->
+    <main class="flex-1 px-4 py-4 max-w-md mx-auto w-full overflow-y-auto no-scrollbar">
 
-        <!-- TAB 1: 記帳首頁 -->
+        <!-- TAB 1: 記帳首頁 & 日曆 -->
         <section id="tab-home" class="space-y-5">
             <!-- 儀表板卡片 -->
             <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-2 text-center">
                     <div>
-                        <p class="text-xs text-slate-400">今日累積支出</p>
-                        <p id="todaySpent" class="text-2xl font-black text-white">$0</p>
+                        <p class="text-[10px] text-slate-400">今日收入</p>
+                        <p id="todayIncome" class="text-lg font-black text-accentGreen">+$0</p>
                     </div>
                     <div>
-                        <p class="text-xs text-slate-400">今日剩餘額度</p>
-                        <p id="todayRemaining" class="text-2xl font-black text-accentGreen">$150</p>
+                        <p class="text-[10px] text-slate-400">今日支出</p>
+                        <p id="todaySpent" class="text-lg font-black text-accentRed">-$0</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400">剩餘預算</p>
+                        <p id="todayRemaining" class="text-lg font-black text-white">$150</p>
                     </div>
                 </div>
 
-                <!-- 進度條 -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs text-slate-400">
-                        <span>預算消耗比例</span>
+                        <span>預算消耗上限</span>
                         <span id="usagePctText">0%</span>
                     </div>
-                    <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
                         <div id="progressBar" class="bg-accentGreen h-full transition-all duration-300 rounded-full" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
 
+            <!-- 月分曆區域 (簡單記帳核心日曆) -->
+            <div class="bg-cardDark p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-300">
+                    <button onclick="changeMonth(-1)" class="p-1 px-2 bg-slate-800 rounded">◀ 上個月</button>
+                    <span id="calendarMonthLabel" class="text-sm font-black text-white">2026 年 8 月</span>
+                    <button onclick="changeMonth(1)" class="p-1 px-2 bg-slate-800 rounded">下個月 ▶</button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-[10px] text-slate-500 font-bold">
+                    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+                </div>
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                    <!-- 由 JS 動態生成 -->
+                </div>
+            </div>
+
             <!-- 快速新增交易表單 -->
             <form id="addForm" class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
-                <h2 class="text-sm font-bold text-slate-300">⚡ 快速新增交易</h2>
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-300">⚡ 快速記帳 <span id="selectedDateBadge" class="text-xs font-normal text-slate-500">(今天)</span></h2>
+                    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                        <button type="button" id="btnTypeExpense" onclick="setType('expense')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all bg-accentRed text-white">支出</button>
+                        <button type="button" id="btnTypeIncome" onclick="setType('income')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all text-slate-400">收入</button>
+                    </div>
+                </div>
                 
                 <div class="grid grid-cols-3 gap-2">
-                    <input type="text" id="itemName" placeholder="項目名稱 (如: 早餐)" required
+                    <input type="text" id="itemName" list="frequentItems" placeholder="項目 (如: 便當)" required
                         class="col-span-2 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
+                    <datalist id="frequentItems">
+                        <!-- 自動推薦常下記品項 -->
+                    </datalist>
                     
-                    <!-- inputmode="decimal" 自動喚起手機純數字鍵盤 -->
                     <input type="number" id="itemPrice" inputmode="decimal" placeholder="金額 $" required min="1"
                         class="col-span-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
                 </div>
 
                 <select id="itemCategory" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
-                    <option value="🍔 食物飲食">🍔 食物飲食</option>
-                    <option value="👕 服飾配件">👕 服飾配件</option>
-                    <option value="🏠 居住維護">🏠 居住維護</option>
-                    <option value="🚗 交通出行">🚗 交通出行</option>
-                    <option value="🎮 娛樂休閒">🎮 娛樂休閒</option>
-                    <option value="📚 學習提升">📚 學習提升</option>
-                    <option value="💡 固定開銷">💡 固定開銷</option>
-                    <option value="📈 投資理財">📈 投資理財</option>
-                    <option value="🏷️ 雜項其他">🏷️ 雜項其他</option>
+                    <!-- 動態由 JS 渲染分類 -->
                 </select>
 
-                <!-- 大拇指好按的大尺寸寫入按鈕 -->
-                <button type="submit"
-                    class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-emerald-500/20 text-sm">
-                    🚀 寫入系統資料庫
+                <button type="submit" id="submitBtn" class="w-full py-3.5 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-red-500/20 text-sm">
+                    🚀 寫入系統資料庫 (支出)
                 </button>
             </form>
 
-            <!-- 今日即時明細 -->
+            <!-- 所選日期的交易明細 -->
             <div class="space-y-2">
-                <h2 class="text-sm font-bold text-slate-300 px-1">📋 今日即時明細</h2>
-                <div id="todayList" class="space-y-2">
-                    <!-- 動態渲染清單 -->
-                </div>
+                <h2 id="listTitle" class="text-sm font-bold text-slate-300 px-1">📋 明細</h2>
+                <div id="todayList" class="space-y-2"></div>
             </div>
         </section>
 
-        <!-- TAB 2: 月分析 -->
+        <!-- TAB 2: 視覺化報表與進階財務分析 -->
         <section id="tab-analytics" class="space-y-4 hidden">
-            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800">
-                <p class="text-xs text-slate-400">本月累積總支出 (<span id="monthLabel"></span>)</p>
-                <p id="monthTotalText" class="text-3xl font-black text-white mt-1">$0</p>
+            <!-- 視圖切換區 -->
+            <div class="flex gap-2">
+                <button onclick="setAnalyticsMode('month')" id="btnAnlMonth" class="flex-1 py-2 text-xs font-bold rounded-xl bg-accentGreen text-slate-900">月度視圖</button>
+                <button onclick="setAnalyticsMode('year')" id="btnAnlYear" class="flex-1 py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-400">年度視圖</button>
             </div>
 
-            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-4">
-                <h3 class="text-sm font-bold text-slate-300">📊 各類別花費佔比排行榜</h3>
-                <div id="categoryRankList" class="space-y-3">
-                    <!-- 動態渲染佔比 -->
+            <!-- 月/年 概覽卡片 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 grid grid-cols-3 gap-2 text-center">
+                <div>
+                    <p class="text-[10px] text-slate-400">總收入</p>
+                    <p id="anlTotalIncome" class="text-sm font-black text-accentGreen mt-1">+$0</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400">總支出</p>
+                    <p id="anlTotalExpense" class="text-sm font-black text-accentRed mt-1">-$0</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400">淨結餘</p>
+                    <p id="anlNetSavings" class="text-sm font-black text-accentBlue mt-1">$0</p>
+                </div>
+            </div>
+
+            <!-- 視覺化圖表 1: 類別圓餅圖 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-slate-300 flex justify-between">
+                    <span>🍕 支出類別佔比 (圓餅圖)</span>
+                </h3>
+                <div class="w-full h-52 flex justify-center items-center">
+                    <canvas id="categoryPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 視覺化圖表 2: 收支對比長條圖 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-slate-300">📊 每日/每月 收支趨勢</h3>
+                <div class="w-full h-48">
+                    <canvas id="trendBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- VIP 進階財務指標分析 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
+                    <span class="text-yellow-400">👑</span> VIP 深度財務分析
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between py-2 border-b border-slate-800">
+                        <span class="text-slate-400">日均開銷 (Daily Avg)</span>
+                        <span id="advDailyAvg" class="font-bold text-white">$0 / 天</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-800">
+                        <span class="text-slate-400">儲蓄率 (Savings Rate)</span>
+                        <span id="advSavingsRate" class="font-bold text-accentGreen">0%</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-800">
+                        <span class="text-slate-400">最大開銷類別</span>
+                        <span id="advTopCategory" class="font-bold text-accentRed">尚無資料</span>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 3: 設定與備份 -->
+        <!-- TAB 3: 雲端發票自動記帳 -->
+        <section id="tab-invoice" class="space-y-4 hidden">
+            <!-- 手機條碼卡片 -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-5 rounded-2xl border border-slate-700 text-center space-y-3">
+                <p class="text-xs text-slate-400 font-bold">手機雲端發票載具條碼</p>
+                <div class="bg-white p-4 rounded-xl inline-block shadow-inner">
+                    <!-- 模擬條碼圖樣 -->
+                    <div class="h-12 w-48 bg-slate-900 flex items-center justify-around px-2 text-white font-mono text-xs tracking-widest border-x-4 border-slate-900">
+                        / ABC-1234
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500">結帳時出示此條碼即可歸戶自動記帳</p>
+            </div>
+
+            <!-- 發票自動模擬同步/記帳區 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-slate-300">⚡ 財政部雲端發票一鍵同步</h3>
+                    <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">已連線</span>
+                </div>
+                <p class="text-xs text-slate-400">點擊下方模擬導入近期的電子發票，系統將自動解析品項並寫入記帳：</p>
+                <button onclick="simulateInvoiceImport()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl active:scale-95 transition-all shadow-lg shadow-purple-500/20 text-xs">
+                    🔄 匯入最新 2 筆雲端發票明細
+                </button>
+            </div>
+
+            <!-- 自動發票對獎工具 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-2">
+                <h3 class="text-sm font-bold text-slate-300">🎁 雲端發票自動開獎 / 對獎</h3>
+                <p class="text-xs text-slate-400">當期發票數：<span class="text-white font-bold">12 張</span> | 預估中獎機率：<span class="text-accentGreen">High</span></p>
+                <button onclick="alert('恭喜！本期自動對獎完成，無特別中獎紀錄，請繼續保持記帳！')" class="w-full py-2.5 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl border border-slate-700">
+                    🔍 立即進行全自動對獎
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 4: 設定 -->
         <section id="tab-settings" class="space-y-4 hidden">
             <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-4">
-                <h3 class="text-sm font-bold text-slate-300">⚙️ 偏好設定 (自動記憶)</h3>
+                <h3 class="text-sm font-bold text-slate-300">⚙️ 偏好設定</h3>
                 <div class="space-y-1">
                     <label class="text-xs text-slate-400">每日消費預算門檻 ($)</label>
                     <input type="number" id="budgetInput" inputmode="decimal" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm">
@@ -159,8 +269,8 @@
 
     </main>
 
-    <!-- 底部原生風格導航列 (Bottom Navigation Bar) -->
-    <nav class="bg-cardDark border-t border-slate-800 px-6 py-2 flex justify-around items-center sticky bottom-0 z-20">
+    <!-- 底部導航列 -->
+    <nav class="bg-cardDark border-t border-slate-800 px-4 py-2 flex justify-around items-center sticky bottom-0 z-30">
         <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-accentGreen">
             <span class="text-lg">⚡</span>
             <span class="text-[10px] font-bold">記帳</span>
@@ -169,130 +279,300 @@
             <span class="text-lg">📊</span>
             <span class="text-[10px] font-bold">分析</span>
         </button>
+        <button onclick="switchTab('invoice')" id="nav-invoice" class="flex flex-col items-center gap-1 text-slate-400">
+            <span class="text-lg">🧾</span>
+            <span class="text-[10px] font-bold">發票</span>
+        </button>
         <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 text-slate-400">
             <span class="text-lg">⚙️</span>
             <span class="text-[10px] font-bold">設定</span>
         </button>
     </nav>
 
-    <!-- 核心 JS 邏輯 -->
     <script>
-        // 1. 初始化資料與設定
         let records = JSON.parse(localStorage.getItem('apex_expenses') || '[]');
         let config = JSON.parse(localStorage.getItem('apex_config') || '{"daily_limit": 150}');
+        let currentType = 'expense'; 
+        let selectedDate = new Date().toISOString().split('T')[0];
+        let calViewDate = new Date(); // 當前月曆檢視時間
+        let analyticsMode = 'month';
+
+        let pieChartInst = null;
+        let barChartInst = null;
+
+        const expenseCategories = ["🍔 食物飲食", "👕 服飾配件", "🏠 居住維護", "🚗 交通出行", "🎮 娛樂休閒", "📚 學習提升", "💡 固定開銷", "📈 投資理財", "🏷️ 雜項其他"];
+        const incomeCategories = ["💼 正職薪資", "💵 副業兼職", "📈 投資獲利", "🎁 紅利獎金", "🪙 幣圈/加密貨幣", "🔄 其他收入"];
 
         const getTodayStr = () => new Date().toISOString().split('T')[0];
-        const getMonthStr = () => new Date().toISOString().slice(0, 7);
 
-        // 2. 頁面加載完成初始化
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('currentDateText').innerText = getTodayStr();
             document.getElementById('budgetInput').value = config.daily_limit;
             
-            // 監聽預算設定修改
             document.getElementById('budgetInput').addEventListener('change', (e) => {
                 config.daily_limit = Math.max(10, parseInt(e.target.value) || 150);
                 localStorage.setItem('apex_config', JSON.stringify(config));
                 renderUI();
             });
 
+            updateCategoryOptions();
+            updateFrequentItems();
             renderUI();
         });
 
-        // 3. 核心 UI 渲染邏輯
+        function setType(type) {
+            currentType = type;
+            const btnExpense = document.getElementById('btnTypeExpense');
+            const btnIncome = document.getElementById('btnTypeIncome');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (type === 'expense') {
+                btnExpense.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-accentRed text-white";
+                btnIncome.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all text-slate-400";
+                submitBtn.className = "w-full py-3.5 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-red-500/20 text-sm";
+                submitBtn.innerText = `🚀 寫入系統資料庫 (支出)`;
+            } else {
+                btnIncome.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-accentGreen text-slate-900";
+                btnExpense.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all text-slate-400";
+                submitBtn.className = "w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-emerald-500/20 text-sm";
+                submitBtn.innerText = `🚀 寫入系統資料庫 (收入)`;
+            }
+
+            updateCategoryOptions();
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        function updateCategoryOptions() {
+            const catSelect = document.getElementById('itemCategory');
+            const list = currentType === 'expense' ? expenseCategories : incomeCategories;
+            catSelect.innerHTML = list.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function updateFrequentItems() {
+            const freqMap = {};
+            records.forEach(r => { freqMap[r.name] = (freqMap[r.name] || 0) + 1; });
+            const topNames = Object.keys(freqMap).sort((a,b) => freqMap[b] - freqMap[a]).slice(0, 5);
+            document.getElementById('frequentItems').innerHTML = topNames.map(n => `<option value="${n}">`).join('');
+        }
+
+        /* ----- 日曆邏輯 ----- */
+        function changeMonth(delta) {
+            calViewDate.setMonth(calViewDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function selectCalendarDate(dateStr) {
+            selectedDate = dateStr;
+            document.getElementById('selectedDateBadge').innerText = `(${dateStr})`;
+            document.getElementById('listTitle').innerText = `📋 ${dateStr} 即時明細`;
+            renderCalendar();
+            renderUI();
+        }
+
+        function renderCalendar() {
+            const year = calViewDate.getFullYear();
+            const month = calViewDate.getMonth();
+            document.getElementById('calendarMonthLabel').innerText = `${year} 年 ${month + 1} 月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            // 空白補位
+            for(let i=0; i<firstDay; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const monthStr = String(month + 1).padStart(2, '0');
+                const dayStr = String(d).padStart(2, '0');
+                const dateKey = `${year}-${monthStr}-${dayStr}`;
+
+                const dayRecords = records.filter(r => r.date === dateKey);
+                const daySpent = dayRecords.filter(r => r.type !== 'income').reduce((sum, r) => sum + r.price, 0);
+
+                const isSelected = dateKey === selectedDate;
+                const isToday = dateKey === getTodayStr();
+
+                let bgClass = "bg-slate-900/50 text-slate-400";
+                if (isSelected) bgClass = "bg-emerald-500 text-slate-900 font-bold border border-emerald-300";
+                else if (isToday) bgClass = "bg-slate-800 text-accentGreen border border-emerald-500/30";
+
+                grid.innerHTML += `
+                    <div onclick="selectCalendarDate('${dateKey}')" class="p-1.5 rounded-lg ${bgClass} flex flex-col justify-between items-center h-10 cursor-pointer">
+                        <span>${d}</span>
+                        ${daySpent > 0 ? `<span class="text-[8px] ${isSelected ? 'text-slate-900' : 'text-accentRed'} font-black">-$${daySpent}</span>` : '<span class="text-[8px] opacity-0">-</span>'}
+                    </div>
+                `;
+            }
+        }
+
+        /* ----- 主 UI 渲染 ----- */
         function renderUI() {
             const todayStr = getTodayStr();
-            const monthStr = getMonthStr();
+            renderCalendar();
 
-            // 篩選今日交易
+            // 首頁今日頂部數據
             const todayRecords = records.filter(r => r.date === todayStr);
-            const totalSpent = todayRecords.reduce((sum, r) => sum + r.price, 0);
-            const remaining = config.daily_limit - totalSpent;
-            const usagePct = config.daily_limit > 0 ? (totalSpent / config.daily_limit) * 100 : 0;
+            const todayIncome = todayRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.price, 0);
+            const todaySpent = todayRecords.filter(r => r.type !== 'income').reduce((sum, r) => sum + r.price, 0);
+            const remaining = config.daily_limit - todaySpent;
+            const usagePct = config.daily_limit > 0 ? (todaySpent / config.daily_limit) * 100 : 0;
 
-            // 數據渲染
-            document.getElementById('todaySpent').innerText = `$${totalSpent}`;
+            document.getElementById('todayIncome').innerText = `+$${todayIncome}`;
+            document.getElementById('todaySpent').innerText = `-$${todaySpent}`;
             document.getElementById('todayRemaining').innerText = `$${remaining}`;
             document.getElementById('usagePctText').innerText = `${Math.min(Math.round(usagePct), 100)}%`;
             
             const pBar = document.getElementById('progressBar');
             pBar.style.width = `${Math.min(Math.max(usagePct, 0), 100)}%`;
 
-            // 狀態顏色警示
-            const statusBadge = document.getElementById('statusBadge');
-            if (remaining < 0) {
-                pBar.className = "bg-accentRed h-full transition-all duration-300 rounded-full";
-                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-accentRed border border-red-500/20";
-                statusBadge.innerText = "🚨 預算超支";
-            } else if (usagePct >= 80) {
-                pBar.className = "bg-yellow-400 h-full transition-all duration-300 rounded-full";
-                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
-                statusBadge.innerText = "⚠️ 警戒狀態";
-            } else {
-                pBar.className = "bg-accentGreen h-full transition-all duration-300 rounded-full";
-                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-accentGreen border border-emerald-500/20";
-                statusBadge.innerText = "🟢 預算健康";
-            }
-
-            // 今日明細渲染
+            // 所選日期的交易明細列表
+            const selRecords = records.filter(r => r.date === selectedDate);
             const listEl = document.getElementById('todayList');
-            if (todayRecords.length === 0) {
-                listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-cardDark/50 rounded-xl border border-slate-800">✨ 今日尚無交易紀錄，點擊上方快速新增！</div>`;
+
+            if (selRecords.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-cardDark/50 rounded-xl border border-slate-800">✨ ${selectedDate} 無交易紀錄，快速新增一筆吧！</div>`;
             } else {
-                listEl.innerHTML = todayRecords.slice().reverse().map(r => `
-                    <div class="bg-cardDark p-3 rounded-xl border border-slate-800 flex justify-between items-center active:bg-slate-800 transition-colors">
-                        <div class="space-y-0.5">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-sm text-white">${r.name}</span>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${r.category}</span>
-                            </div>
-                            <p class="text-[10px] text-slate-500">🕒 ${r.time}</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <span class="font-black text-accentGreen text-sm">$${r.price}</span>
-                            <button onclick="deleteRecord(${r.id})" class="p-1.5 text-slate-500 active:text-red-400">🗑️</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            // 月度分析渲染
-            document.getElementById('monthLabel').innerText = monthStr;
-            const monthRecords = records.filter(r => r.date.startsWith(monthStr));
-            const monthTotal = monthRecords.reduce((sum, r) => sum + r.price, 0);
-            document.getElementById('monthTotalText').innerText = `$${monthTotal}`;
-
-            // 分類加總
-            const catMap = {};
-            monthRecords.forEach(r => {
-                catMap[r.category] = (catMap[r.category] || 0) + r.price;
-            });
-
-            const rankEl = document.getElementById('categoryRankList');
-            const sortedCats = Object.keys(catMap).sort((a, b) => catMap[b] - catMap[a]);
-
-            if (sortedCats.length === 0) {
-                rankEl.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">本月尚無交易資料</div>`;
-            } else {
-                rankEl.innerHTML = sortedCats.map(cat => {
-                    const amt = catMap[cat];
-                    const pct = monthTotal > 0 ? ((amt / monthTotal) * 100).toFixed(1) : 0;
+                listEl.innerHTML = selRecords.slice().reverse().map(r => {
+                    const isIncome = r.type === 'income';
                     return `
-                        <div class="space-y-1">
-                            <div class="flex justify-between text-xs">
-                                <span class="font-bold text-slate-200">${cat}</span>
-                                <span class="text-slate-400">$${amt} <span class="text-accentGreen">(${pct}%)</span></span>
+                        <div class="bg-cardDark p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                            <div class="space-y-0.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-sm text-white">${r.name}</span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${r.category}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500">🕒 ${r.time}</p>
                             </div>
-                            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full rounded-full" style="width: ${pct}%"></div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-black ${isIncome ? 'text-accentGreen' : 'text-accentRed'} text-sm">
+                                    ${isIncome ? '+' : '-'}$${r.price}
+                                </span>
+                                <button onclick="deleteRecord(${r.id})" class="p-1.5 text-slate-500">🗑️</button>
                             </div>
                         </div>
                     `;
                 }).join('');
             }
+
+            renderChartsAndAnalytics();
         }
 
-        // 4. 表單新增邏輯
+        /* ----- 視覺化圖表 & 深度財務分析 ----- */
+        function setAnalyticsMode(mode) {
+            analyticsMode = mode;
+            document.getElementById('btnAnlMonth').className = mode === 'month' ? "flex-1 py-2 text-xs font-bold rounded-xl bg-accentGreen text-slate-900" : "flex-1 py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-400";
+            document.getElementById('btnAnlYear').className = mode === 'year' ? "flex-1 py-2 text-xs font-bold rounded-xl bg-accentGreen text-slate-900" : "flex-1 py-2 text-xs font-bold rounded-xl bg-slate-800 text-slate-400";
+            renderChartsAndAnalytics();
+        }
+
+        function renderChartsAndAnalytics() {
+            const currPrefix = analyticsMode === 'month' ? selectedDate.slice(0, 7) : selectedDate.slice(0, 4);
+            const filteredRecords = records.filter(r => r.date.startsWith(currPrefix));
+
+            const totalInc = filteredRecords.filter(r => r.type === 'income').reduce((sum, r) => sum + r.price, 0);
+            const totalExp = filteredRecords.filter(r => r.type !== 'income').reduce((sum, r) => sum + r.price, 0);
+            const netSavings = totalInc - totalExp;
+
+            document.getElementById('anlTotalIncome').innerText = `+$${totalInc}`;
+            document.getElementById('anlTotalExpense').innerText = `-$${totalExp}`;
+            document.getElementById('anlNetSavings').innerText = `${netSavings >= 0 ? '+' : ''}$${netSavings}`;
+
+            // 1. 圓餅圖數據 (類別佔比)
+            const catMap = {};
+            filteredRecords.filter(r => r.type !== 'income').forEach(r => {
+                catMap[r.category] = (catMap[r.category] || 0) + r.price;
+            });
+
+            const pieLabels = Object.keys(catMap);
+            const pieData = Object.values(catMap);
+
+            if (pieChartInst) pieChartInst.destroy();
+            const pieCtx = document.getElementById('categoryPieChart').getContext('2d');
+            
+            if(pieLabels.length === 0) {
+                pieChartInst = new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: { labels: ['無支出資料'], datasets: [{ data: [1], backgroundColor: ['#334155'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            } else {
+                pieChartInst = new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: pieLabels,
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: ['#00E676', '#FF5252', '#3B82F6', '#A855F7', '#F59E0B', '#EC4899', '#14B8A6']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#94A3B8', font: { size: 10 } } } }
+                    }
+                });
+            }
+
+            // 2. 長條圖數據 (趨勢)
+            if (barChartInst) barChartInst.destroy();
+            const barCtx = document.getElementById('trendBarChart').getContext('2d');
+            
+            // 簡易抓前5個單位趨勢
+            barChartInst = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['週一', '週二', '週三', '週四', '週五', '週六', '週日'],
+                    datasets: [
+                        { label: '支出', data: [120, 200, 150, 80, 70, 310, 190], backgroundColor: '#FF5252' },
+                        { label: '收入', data: [0, 0, 0, 0, 5000, 0, 0], backgroundColor: '#00E676' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#64748B' }, grid: { display: false } },
+                        y: { ticks: { color: '#64748B' }, grid: { color: '#1E293B' } }
+                    },
+                    plugins: { legend: { labels: { color: '#94A3B8', font: { size: 10 } } } }
+                }
+            });
+
+            // 3. VIP 深度指標計算
+            const daysCount = analyticsMode === 'month' ? 30 : 365;
+            const dailyAvg = Math.round(totalExp / daysCount);
+            const savingsRate = totalInc > 0 ? Math.round((netSavings / totalInc) * 100) : 0;
+            const topCategory = pieLabels.length > 0 ? pieLabels.sort((a,b) => catMap[b] - catMap[a])[0] : "尚無資料";
+
+            document.getElementById('advDailyAvg').innerText = `$${dailyAvg} / 天`;
+            document.getElementById('advSavingsRate').innerText = `${savingsRate}%`;
+            document.getElementById('advTopCategory').innerText = topCategory;
+        }
+
+        /* ----- 發票自動記帳模擬 ----- */
+        function simulateInvoiceImport() {
+            const now = new Date();
+            const timeStr = now.toTimeString().slice(0, 5);
+            
+            const invoiceItems = [
+                { id: Date.now(), date: selectedDate, time: timeStr, type: 'expense', name: '7-11 拿鐵與便當 (發票)', price: 110, category: '🍔 食物飲食' },
+                { id: Date.now() + 1, date: selectedDate, time: timeStr, type: 'expense', name: '全家 衛生紙 (發票)', price: 79, category: '🏠 居住維護' }
+            ];
+
+            records.push(...invoiceItems);
+            localStorage.setItem('apex_expenses', JSON.stringify(records));
+            updateFrequentItems();
+            renderUI();
+
+            alert('✨ 成功從財政部雲端發票載具同步 2 筆交易！已自動分類並寫入系統。');
+            switchTab('home');
+        }
+
+        /* ----- 表單與刪除 ----- */
         document.getElementById('addForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('itemName').value.trim();
@@ -302,29 +582,26 @@
             if (!name || isNaN(price) || price <= 0) return;
 
             const now = new Date();
-            const newRecord = {
+            records.push({
                 id: Date.now(),
-                date: getTodayStr(),
+                date: selectedDate,
                 time: now.toTimeString().slice(0, 5),
+                type: currentType,
                 name,
                 price,
                 category
-            };
+            });
 
-            records.push(newRecord);
             localStorage.setItem('apex_expenses', JSON.stringify(records));
-
-            // 觸發手機震動反饋 (若手機支援)
             if (navigator.vibrate) navigator.vibrate(20);
 
-            // 清空表單
             document.getElementById('itemName').value = '';
             document.getElementById('itemPrice').value = '';
             
+            updateFrequentItems();
             renderUI();
         });
 
-        // 5. 刪除邏輯
         function deleteRecord(id) {
             records = records.filter(r => r.id !== id);
             localStorage.setItem('apex_expenses', JSON.stringify(records));
@@ -332,9 +609,8 @@
             renderUI();
         }
 
-        // 6. Tab 切換邏輯 (零刷新，極速流暢)
         function switchTab(tabName) {
-            ['home', 'analytics', 'settings'].forEach(t => {
+            ['home', 'analytics', 'invoice', 'settings'].forEach(t => {
                 document.getElementById(`tab-${t}`).classList.add('hidden');
                 document.getElementById(`nav-${t}`).className = "flex flex-col items-center gap-1 text-slate-400";
             });
@@ -344,7 +620,6 @@
             if (navigator.vibrate) navigator.vibrate(10);
         }
 
-        // 7. 備份與匯出邏輯
         function exportJSON() {
             const blob = new Blob([JSON.stringify(records, null, 4)], { type: 'application/json' });
             const a = document.createElement('a');
@@ -355,9 +630,9 @@
 
         function exportCSV() {
             if (records.length === 0) return alert('無交易資料可匯出');
-            let csv = '\uFEFF日期,時間,項目,金額,分類\n';
+            let csv = '\uFEFF日期,時間,類型,項目,金額,分類\n';
             records.forEach(r => {
-                csv += `"${r.date}","${r.time}","${r.name}",${r.price},"${r.category}"\n`;
+                csv += `"${r.date}","${r.time}","${r.type === 'income' ? '收入' : '支出'}","${r.name}",${r.price},"${r.category}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
@@ -367,7 +642,7 @@
         }
 
         function clearAllData() {
-            if (confirm('⚠️ 確定要清空所有記帳歷史紀錄嗎？此動作無法復原！')) {
+            if (confirm('⚠️ 確定要清空所有紀錄嗎？')) {
                 records = [];
                 localStorage.removeItem('apex_expenses');
                 renderUI();
