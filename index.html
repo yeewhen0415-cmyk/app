@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>極致全方位記帳本</title>
+    <title>極致全方位記帳本（防遺失升級版）</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Chart.js -->
@@ -46,6 +46,15 @@
 
     <!-- 主要內容區塊 -->
     <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
+
+        <!-- 資料防遺失救援提示橫幅 -->
+        <div id="rescueBanner" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between text-xs text-amber-300">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base"></i>
+                <span>發現瀏覽器曾儲存過資料，是否立即恢復？</span>
+            </div>
+            <button onclick="restoreFromBackup()" class="bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-xl hover:opacity-90">一鍵還原</button>
+        </div>
 
         <!-- 總覽儀表板卡片 -->
         <section class="bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800/80 rounded-3xl p-5 shadow-xl relative overflow-hidden">
@@ -281,11 +290,11 @@
                 </div>
 
                 <div class="pt-2 border-t border-slate-800 space-y-2">
-                    <span class="text-slate-400 block font-medium">資料庫管理</span>
+                    <span class="text-slate-400 block font-medium">資料庫管理（強效防遺失）</span>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="exportDataJSON()" class="bg-slate-800 text-slate-300 py-2 rounded-xl hover:bg-slate-700">匯出 JSON</button>
+                        <button onclick="exportDataJSON()" class="bg-slate-800 text-slate-300 py-2 rounded-xl hover:bg-slate-700">下載備份 JSON</button>
                         <label class="bg-slate-800 text-slate-300 py-2 rounded-xl hover:bg-slate-700 text-center cursor-pointer">
-                            匯入 JSON
+                            匯入備份 JSON
                             <input type="file" id="importFile" onchange="importDataJSON(event)" accept=".json" class="hidden">
                         </label>
                     </div>
@@ -296,8 +305,8 @@
 
     <!-- JavaScript 核心邏輯 -->
     <script>
-        // 資料結構初始化
-        let records = JSON.parse(localStorage.getItem('my_records')) || [];
+        // 資料結構初始化（雙重防護：同時儲存於 localStorage 與 sessionStorage）
+        let records = JSON.parse(localStorage.getItem('my_records')) || JSON.parse(sessionStorage.getItem('backup_records')) || [];
         let config = JSON.parse(localStorage.getItem('my_config')) || { daily_limit: 150 };
         let currentType = 'expense';
         let currentCalYear = new Date().getFullYear();
@@ -315,8 +324,28 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('inputDate').value = getTodayStr();
             updateCategoryOptions();
+            checkRescueData();
             renderUI();
         });
+
+        // 檢查是否有歷史殘存資料可供救援
+        function checkRescueData() {
+            const local = localStorage.getItem('my_records');
+            const session = sessionStorage.getItem('backup_records');
+            if (!local && session) {
+                document.getElementById('rescueBanner').classList.remove('hidden');
+            }
+        }
+
+        function restoreFromBackup() {
+            const session = sessionStorage.getItem('backup_records');
+            if (session) {
+                records = JSON.parse(session);
+                saveAndRender();
+                document.getElementById('rescueBanner').classList.add('hidden');
+                alert('成功救回先前遺失的資料！');
+            }
+        }
 
         function getTodayStr() {
             const d = new Date();
@@ -396,7 +425,7 @@
             document.getElementById('inputNote').value = '';
         }
 
-        // 隨時更改既有記錄的日期（移動金錢流動日期）
+        // 隨時更改既有記錄的日期
         function updateRecordDate(id, newDate) {
             if (!newDate) return;
             const record = records.find(r => r.id === id);
@@ -413,6 +442,8 @@
 
         function saveAndRender() {
             localStorage.setItem('my_records', JSON.stringify(records));
+            sessionStorage.setItem('backup_records', JSON.stringify(records)); // 雙重安全備份
+            localStorage.setItem('my_config', JSON.stringify(config));
             renderUI();
         }
 
@@ -747,9 +778,7 @@
                     const parsed = JSON.parse(event.target.result);
                     if (parsed.records) records = parsed.records;
                     if (parsed.config) config = parsed.config;
-                    localStorage.setItem('my_records', JSON.stringify(records));
-                    localStorage.setItem('my_config', JSON.stringify(config));
-                    renderUI();
+                    saveAndRender();
                     alert('資料匯入成功！');
                     closeSettingsModal();
                 } catch {
