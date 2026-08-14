@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Apex Mobile Finance</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bgDark: '#0D0E15',
+                        cardDark: '#1E293B',
+                        accentGreen: '#00E676',
+                        accentRed: '#FF5252'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 針對 iOS 避免長按選取與雙擊放大的原生體驗優化 */
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background-color: #0D0E15;
+            color: #F8FAFC;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        input, select {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+    </style>
+</head>
+<body class="bg-bgDark min-h-screen flex flex-col justify-between antialiased">
+
+    <!-- 頂部 Header -->
+    <header class="pt-6 px-4 pb-2 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-bgDark/90 backdrop-blur-md z-10">
+        <div>
+            <h1 class="text-xl font-black text-white tracking-wide flex items-center gap-1.5">
+                <span class="text-accentGreen">⚡</span> APEX FINANCE
+            </h1>
+            <p id="currentDateText" class="text-xs text-slate-400 font-medium">YYYY-MM-DD</p>
+        </div>
+        <div id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-accentGreen border border-emerald-500/20">
+            🟢 預算健康
+        </div>
+    </header>
+
+    <!-- 主內容區 (單頁切換 Tab) -->
+    <main class="flex-1 px-4 py-4 max-w-md mx-auto w-full overflow-y-auto">
+
+        <!-- TAB 1: 記帳首頁 -->
+        <section id="tab-home" class="space-y-5">
+            <!-- 儀表板卡片 -->
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 shadow-lg space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-400">今日累積支出</p>
+                        <p id="todaySpent" class="text-2xl font-black text-white">$0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">今日剩餘額度</p>
+                        <p id="todayRemaining" class="text-2xl font-black text-accentGreen">$150</p>
+                    </div>
+                </div>
+
+                <!-- 進度條 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>預算消耗比例</span>
+                        <span id="usagePctText">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                        <div id="progressBar" class="bg-accentGreen h-full transition-all duration-300 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速新增交易表單 -->
+            <form id="addForm" class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h2 class="text-sm font-bold text-slate-300">⚡ 快速新增交易</h2>
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="text" id="itemName" placeholder="項目名稱 (如: 早餐)" required
+                        class="col-span-2 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
+                    
+                    <!-- inputmode="decimal" 自動喚起手機純數字鍵盤 -->
+                    <input type="number" id="itemPrice" inputmode="decimal" placeholder="金額 $" required min="1"
+                        class="col-span-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
+                </div>
+
+                <select id="itemCategory" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-3 text-sm focus:outline-none focus:border-accentGreen">
+                    <option value="🍔 食物飲食">🍔 食物飲食</option>
+                    <option value="👕 服飾配件">👕 服飾配件</option>
+                    <option value="🏠 居住維護">🏠 居住維護</option>
+                    <option value="🚗 交通出行">🚗 交通出行</option>
+                    <option value="🎮 娛樂休閒">🎮 娛樂休閒</option>
+                    <option value="📚 學習提升">📚 學習提升</option>
+                    <option value="💡 固定開銷">💡 固定開銷</option>
+                    <option value="📈 投資理財">📈 投資理財</option>
+                    <option value="🏷️ 雜項其他">🏷️ 雜項其他</option>
+                </select>
+
+                <!-- 大拇指好按的大尺寸寫入按鈕 -->
+                <button type="submit"
+                    class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-emerald-500/20 text-sm">
+                    🚀 寫入系統資料庫
+                </button>
+            </form>
+
+            <!-- 今日即時明細 -->
+            <div class="space-y-2">
+                <h2 class="text-sm font-bold text-slate-300 px-1">📋 今日即時明細</h2>
+                <div id="todayList" class="space-y-2">
+                    <!-- 動態渲染清單 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: 月分析 -->
+        <section id="tab-analytics" class="space-y-4 hidden">
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800">
+                <p class="text-xs text-slate-400">本月累積總支出 (<span id="monthLabel"></span>)</p>
+                <p id="monthTotalText" class="text-3xl font-black text-white mt-1">$0</p>
+            </div>
+
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-4">
+                <h3 class="text-sm font-bold text-slate-300">📊 各類別花費佔比排行榜</h3>
+                <div id="categoryRankList" class="space-y-3">
+                    <!-- 動態渲染佔比 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: 設定與備份 -->
+        <section id="tab-settings" class="space-y-4 hidden">
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-4">
+                <h3 class="text-sm font-bold text-slate-300">⚙️ 偏好設定 (自動記憶)</h3>
+                <div class="space-y-1">
+                    <label class="text-xs text-slate-400">每日消費預算門檻 ($)</label>
+                    <input type="number" id="budgetInput" inputmode="decimal" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm">
+                </div>
+            </div>
+
+            <div class="bg-cardDark p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-slate-300">💾 資料備份與管理</h3>
+                <button onclick="exportJSON()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700">📥 匯出 JSON 備份檔</button>
+                <button onclick="exportCSV()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700">📊 匯出 CSV Excel 報表</button>
+                <button onclick="clearAllData()" class="w-full py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-bold rounded-xl">🗑️ 清空所有歷史資料</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部原生風格導航列 (Bottom Navigation Bar) -->
+    <nav class="bg-cardDark border-t border-slate-800 px-6 py-2 flex justify-around items-center sticky bottom-0 z-20">
+        <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-accentGreen">
+            <span class="text-lg">⚡</span>
+            <span class="text-[10px] font-bold">記帳</span>
+        </button>
+        <button onclick="switchTab('analytics')" id="nav-analytics" class="flex flex-col items-center gap-1 text-slate-400">
+            <span class="text-lg">📊</span>
+            <span class="text-[10px] font-bold">分析</span>
+        </button>
+        <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 text-slate-400">
+            <span class="text-lg">⚙️</span>
+            <span class="text-[10px] font-bold">設定</span>
+        </button>
+    </nav>
+
+    <!-- 核心 JS 邏輯 -->
+    <script>
+        // 1. 初始化資料與設定
+        let records = JSON.parse(localStorage.getItem('apex_expenses') || '[]');
+        let config = JSON.parse(localStorage.getItem('apex_config') || '{"daily_limit": 150}');
+
+        const getTodayStr = () => new Date().toISOString().split('T')[0];
+        const getMonthStr = () => new Date().toISOString().slice(0, 7);
+
+        // 2. 頁面加載完成初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('currentDateText').innerText = getTodayStr();
+            document.getElementById('budgetInput').value = config.daily_limit;
+            
+            // 監聽預算設定修改
+            document.getElementById('budgetInput').addEventListener('change', (e) => {
+                config.daily_limit = Math.max(10, parseInt(e.target.value) || 150);
+                localStorage.setItem('apex_config', JSON.stringify(config));
+                renderUI();
+            });
+
+            renderUI();
+        });
+
+        // 3. 核心 UI 渲染邏輯
+        function renderUI() {
+            const todayStr = getTodayStr();
+            const monthStr = getMonthStr();
+
+            // 篩選今日交易
+            const todayRecords = records.filter(r => r.date === todayStr);
+            const totalSpent = todayRecords.reduce((sum, r) => sum + r.price, 0);
+            const remaining = config.daily_limit - totalSpent;
+            const usagePct = config.daily_limit > 0 ? (totalSpent / config.daily_limit) * 100 : 0;
+
+            // 數據渲染
+            document.getElementById('todaySpent').innerText = `$${totalSpent}`;
+            document.getElementById('todayRemaining').innerText = `$${remaining}`;
+            document.getElementById('usagePctText').innerText = `${Math.min(Math.round(usagePct), 100)}%`;
+            
+            const pBar = document.getElementById('progressBar');
+            pBar.style.width = `${Math.min(Math.max(usagePct, 0), 100)}%`;
+
+            // 狀態顏色警示
+            const statusBadge = document.getElementById('statusBadge');
+            if (remaining < 0) {
+                pBar.className = "bg-accentRed h-full transition-all duration-300 rounded-full";
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-red-500/10 text-accentRed border border-red-500/20";
+                statusBadge.innerText = "🚨 預算超支";
+            } else if (usagePct >= 80) {
+                pBar.className = "bg-yellow-400 h-full transition-all duration-300 rounded-full";
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
+                statusBadge.innerText = "⚠️ 警戒狀態";
+            } else {
+                pBar.className = "bg-accentGreen h-full transition-all duration-300 rounded-full";
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-accentGreen border border-emerald-500/20";
+                statusBadge.innerText = "🟢 預算健康";
+            }
+
+            // 今日明細渲染
+            const listEl = document.getElementById('todayList');
+            if (todayRecords.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs bg-cardDark/50 rounded-xl border border-slate-800">✨ 今日尚無交易紀錄，點擊上方快速新增！</div>`;
+            } else {
+                listEl.innerHTML = todayRecords.slice().reverse().map(r => `
+                    <div class="bg-cardDark p-3 rounded-xl border border-slate-800 flex justify-between items-center active:bg-slate-800 transition-colors">
+                        <div class="space-y-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-sm text-white">${r.name}</span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${r.category}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">🕒 ${r.time}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-black text-accentGreen text-sm">$${r.price}</span>
+                            <button onclick="deleteRecord(${r.id})" class="p-1.5 text-slate-500 active:text-red-400">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 月度分析渲染
+            document.getElementById('monthLabel').innerText = monthStr;
+            const monthRecords = records.filter(r => r.date.startsWith(monthStr));
+            const monthTotal = monthRecords.reduce((sum, r) => sum + r.price, 0);
+            document.getElementById('monthTotalText').innerText = `$${monthTotal}`;
+
+            // 分類加總
+            const catMap = {};
+            monthRecords.forEach(r => {
+                catMap[r.category] = (catMap[r.category] || 0) + r.price;
+            });
+
+            const rankEl = document.getElementById('categoryRankList');
+            const sortedCats = Object.keys(catMap).sort((a, b) => catMap[b] - catMap[a]);
+
+            if (sortedCats.length === 0) {
+                rankEl.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs">本月尚無交易資料</div>`;
+            } else {
+                rankEl.innerHTML = sortedCats.map(cat => {
+                    const amt = catMap[cat];
+                    const pct = monthTotal > 0 ? ((amt / monthTotal) * 100).toFixed(1) : 0;
+                    return `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="font-bold text-slate-200">${cat}</span>
+                                <span class="text-slate-400">$${amt} <span class="text-accentGreen">(${pct}%)</span></span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 4. 表單新增邏輯
+        document.getElementById('addForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('itemName').value.trim();
+            const price = parseInt(document.getElementById('itemPrice').value);
+            const category = document.getElementById('itemCategory').value;
+
+            if (!name || isNaN(price) || price <= 0) return;
+
+            const now = new Date();
+            const newRecord = {
+                id: Date.now(),
+                date: getTodayStr(),
+                time: now.toTimeString().slice(0, 5),
+                name,
+                price,
+                category
+            };
+
+            records.push(newRecord);
+            localStorage.setItem('apex_expenses', JSON.stringify(records));
+
+            // 觸發手機震動反饋 (若手機支援)
+            if (navigator.vibrate) navigator.vibrate(20);
+
+            // 清空表單
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            
+            renderUI();
+        });
+
+        // 5. 刪除邏輯
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            localStorage.setItem('apex_expenses', JSON.stringify(records));
+            if (navigator.vibrate) navigator.vibrate(10);
+            renderUI();
+        }
+
+        // 6. Tab 切換邏輯 (零刷新，極速流暢)
+        function switchTab(tabName) {
+            ['home', 'analytics', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`nav-${t}`).className = "flex flex-col items-center gap-1 text-slate-400";
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabName}`).className = "flex flex-col items-center gap-1 text-accentGreen";
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        // 7. 備份與匯出邏輯
+        function exportJSON() {
+            const blob = new Blob([JSON.stringify(records, null, 4)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `finance_backup_${getTodayStr()}.json`;
+            a.click();
+        }
+
+        function exportCSV() {
+            if (records.length === 0) return alert('無交易資料可匯出');
+            let csv = '\uFEFF日期,時間,項目,金額,分類\n';
+            records.forEach(r => {
+                csv += `"${r.date}","${r.time}","${r.name}",${r.price},"${r.category}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `finance_report_${getTodayStr()}.csv`;
+            a.click();
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ 確定要清空所有記帳歷史紀錄嗎？此動作無法復原！')) {
+                records = [];
+                localStorage.removeItem('apex_expenses');
+                renderUI();
+            }
+        }
+    </script>
+</body>
+</html>
+
